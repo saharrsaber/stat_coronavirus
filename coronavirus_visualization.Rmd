@@ -1,21 +1,56 @@
+---
+title: "Coronavirus Visualization"
+author: "Sahar Saber"
+date: "3/30/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Today, I found a dataset about coronavirus updated daily and because there is so much interest in this topic, I thought I would create some data visualizations using ggplot2!
+
+ggplot2 is a library in R used to create interactive and dynamic data visualizations.
+
+*Note: All images were created by myself using ggplot2.*
+
+## Load Required Data
+
+As mentioned above, I used a dataset about coronavirus found at [ourworldindata](https://ourworldindata.org/coronavirus-source-data) 
+
+```{r include = FALSE}
 library(tidyverse)
 library(ggplot2)
 library(readr)
 library(RColorBrewer)
-
 full_data <- read_csv("full_data.csv")
-
 march_29 <- full_data %>% filter(date == "2020-03-29") %>% arrange(desc(total_cases)) %>% select(location,total_cases, total_deaths)
 
+```
+```{r}
+head(march_29)
+```
+Also, a dataframe contains the information required to create Choropleth Maps. 
+```{r include=FALSE}
 corona_worldwide <-march_29[1,]
-
 march_29_countries <- march_29[-1, ]
 
+```
+```{r}
 world <- map_data("world")
-str(world)
+head(world)
+```
 
+## Data Manipulation
+- A left join was made
+
+```{r}
 world_corona <- world %>% left_join(march_29_countries, by = c("region" = "location"))  %>% arrange(desc(total_cases))
-
+```
+```{r include=FALSE}
 world_regions_corona <-world_corona %>% select(region, total_cases, total_deaths) %>% distinct()
 NA_sum <- sum(is.na(world_regions_corona$total_cases))
 NA_regions <- world_regions_corona%>% filter(is.na(world_regions_corona$total_cases))
@@ -36,15 +71,15 @@ NA_regions$total_deaths <- ifelse(NA_regions$region == "UK", UK_total_deaths, NA
 NA_regions$total_cases <- ifelse(is.na(NA_regions$total_cases), 0, NA_regions$total_cases)
 NA_regions$total_deaths <- ifelse(is.na(NA_regions$total_deaths), 0, NA_regions$total_deaths)
 
-#_____________
-
 world_corona_tidied <- world_corona[complete.cases(world_corona$total_cases,world_corona$total_cases ), ] 
 NA_regions_full_data <- world %>% inner_join(NA_regions, by = "region")
 world_corona_tidied<- world_corona_tidied %>% rbind(NA_regions_full_data)
 
 world_corona_tidied$total_cases <- as.numeric(world_corona_tidied$total_cases)
 world_corona_tidied$total_deaths <- as.numeric(world_corona_tidied$total_deaths)
-
+```
+- Changing the continuous variables *total_cases* and *total_deaths* into discrete variables
+```{r}
 world_corona_tidied <- world_corona_tidied %>% mutate(total_cases_discrete = cut(world_corona_tidied$total_cases, 
                                                                                breaks=c(-Inf,0,500, 1000, 10000,100000, Inf), 
                                                                                labels=c("0","<500", "<1000","<10,000","<100,000", ">100,000")))
@@ -53,15 +88,30 @@ world_corona_tidied <- world_corona_tidied %>% mutate(total_deaths_discrete = cu
                                                                                  breaks=c(-Inf,0,500, 1000, 2000,3000, Inf), 
                                                                                  labels=c("0","<500", "<1000","<2000","<3000", ">3000")))
 
-#####################################3
+```
+
+
+### Choropleth Maps
+And Finally, Choropleth Maps shows the spread of the Coronavirus Globally.
+```{r}
 ggplot(world_corona_tidied, aes(x = long, y = lat, group = group, fill =total_cases_discrete )) +
   geom_polygon(col = "#000000") +
   scale_fill_brewer(palette = "Reds")+
-  theme_void() 
+  theme_void()
+```
 
+
+```{r}
 
 ggplot(world_corona_tidied, aes(x = long, y = lat, group = group, fill =total_deaths_discrete )) +
   geom_polygon(col = "#000000") +
   scale_fill_brewer(palette = "Reds")+
   theme_void() 
-  
+```
+
+
+
+
+
+
+
